@@ -6,16 +6,15 @@
    [reagent.ratom :as ratom :refer [make-reaction]]
    [iron.re-utils :as re-utils :refer [<sub >evt event->fn sub->fn]]
    [iron.utils :as utils]
-   [firebase.app :as firebase-app]
-   [firebase.firestore :as firebase-firestore]
+   ["firebase" :as firebase]
+   ["@firebase/firestore" :as fb-firestore]
    [com.degel.re-frame-firebase.core :as core]
    [com.degel.re-frame-firebase.specs :as specs]
    [com.degel.re-frame-firebase.helpers :refer [promise-wrapper]]))
 
-
 (defn set-firestore-settings
   [settings]
-  (.settings (js/firebase.firestore) (clj->js (or settings {}))))
+  (.settings (firebase/firestore) (clj->js (or settings {}))))
 
 ;; Extra public functions
 (defn server-timestamp
@@ -28,7 +27,7 @@
                    :data {:name \"document-with-timestamp\"
                           :timestamp (server-timestamp)}}"
   []
-  (.serverTimestamp js/firebase.firestore.FieldValue))
+  (.serverTimestamp firebase/firestore.FieldValue))
 
 (defn delete-field-value
   "Returns a field value to be used to delete a field.
@@ -40,7 +39,7 @@
   {:firestore/update {:path [:my \"document\"]
                       :data {:field-to-delete (delete-field-value)}}}"
   []
-  (.delete js/firebase.firestore.FieldValue))
+  (.delete fb-firestore/FieldValue))
 
 (defn document-id-field-path
   "Returns a field path which can be used to refer to ID of a document.
@@ -51,7 +50,7 @@
   {:firestore/get {:path-collection [:my-collection]
                    :where [[(document-id-field-path) :>= \"start\"]]}}"
   []
-  (.documentId firebase.firestore.FieldPath))
+  (.documentId firebase/firestore.FieldPath))
 
 
 ;; Type Conversion/Parsing
@@ -61,9 +60,9 @@
   See https://firebase.google.com/docs/reference/js/firebase.firestore.CollectionReference"
   [path]
   {:pre [(utils/validate ::specs/path-collection path)]}
-  (if (instance? js/firebase.firestore.CollectionReference path)
+  (if (instance? firebase/firestore.CollectionReference path)
     path
-    (.collection (js/firebase.firestore)
+    (.collection (firebase/firestore)
                  (str/join "/" (clj->js path)))))
 
 (defn clj->DocumentReference
@@ -72,9 +71,9 @@
   See https://firebase.google.com/docs/reference/js/firebase.firestore.DocumentReference"
   [path]
   {:pre [(utils/validate ::specs/path-document path)]}
-  (if (instance? js/firebase.firestore.DocumentReference path)
+  (if (instance? firebase/firestore.DocumentReference path)
     path
-    (.doc (js/firebase.firestore)
+    (.doc (firebase/firestore)
           (str/join "/" (clj->js path)))))
 
 (defn clj->FieldPath
@@ -86,9 +85,9 @@
   [field-path]
   (cond
     (nil? field-path) nil
-    (instance? js/firebase.firestore.FieldPath field-path) field-path
-    (coll? field-path) (apply js/firebase.firestore.FieldPath. (clj->js field-path))
-    :else (js/firebase.firestore.FieldPath. (clj->js field-path))))
+    (instance? firebase/firestore.FieldPath field-path) field-path
+    (coll? field-path) (apply firebase/firestore.FieldPath. (clj->js field-path))
+    :else (firebase/firestore.FieldPath. (clj->js field-path))))
 
 (defn clj->SetOptions
   "Converts a clojure-style map into a SetOptions satisfying one.
@@ -261,7 +260,7 @@
   (promise-wrapper (deleter path) on-success on-failure))
 
 (defn write-batch-effect [{:keys [operations on-success on-failure]}]
-  (let [batch-instance (.batch (js/firebase.firestore))]
+  (let [batch-instance (.batch (firebase/firestore))]
     (run! (fn [[event-type {:keys [path data set-options]}]]
             (case event-type
               :firestore/delete (deleter batch-instance path)

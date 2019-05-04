@@ -7,8 +7,7 @@
    [clojure.spec.alpha :as s]
    [re-frame.core :as re-frame]
    [iron.re-utils :refer [>evt]]
-   [firebase.app :as firebase-app]
-   [firebase.auth :as firebase-auth]
+   ["firebase" :as firebase]
    [com.degel.re-frame-firebase.core :as core]))
 
 
@@ -32,11 +31,11 @@
 
 (defn- init-auth []
   (.onAuthStateChanged
-   (js/firebase.auth)
+   (firebase/auth)
    set-user
    (core/default-error-handler))
 
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.getRedirectResult)
       (.then (fn on-user-credential [user-credential]
                (-> user-credential
@@ -68,7 +67,7 @@
       (.setCustomParameters auth-provider (clj->js custom-parameters)))
 
     (if-let [sign-in (sign-in-fns sign-in-method)]
-      (-> (js/firebase.auth)
+      (-> (firebase/auth)
           (sign-in auth-provider)
           (.then (partial maybe-link-with-credential link-with-credential))
           (.catch (core/default-error-handler)))
@@ -79,54 +78,54 @@
 (defn google-sign-in
   [opts]
   ;; TODO: use Credential for mobile.
-  (oauth-sign-in (js/firebase.auth.GoogleAuthProvider.) opts))
+  (oauth-sign-in (firebase/auth.GoogleAuthProvider.) opts))
 
 
 (defn facebook-sign-in
   [opts]
-  (oauth-sign-in (js/firebase.auth.FacebookAuthProvider.) opts))
+  (oauth-sign-in (firebase/auth.FacebookAuthProvider.) opts))
 
 
 (defn twitter-sign-in
   [opts]
-  (oauth-sign-in (js/firebase.auth.TwitterAuthProvider.) opts))
+  (oauth-sign-in (firebase/auth.TwitterAuthProvider.) opts))
 
 
 (defn github-sign-in
   [opts]
-  (oauth-sign-in (js/firebase.auth.GithubAuthProvider.) opts))
+  (oauth-sign-in (firebase/auth.GithubAuthProvider.) opts))
 
 
 (defn email-sign-in [{:keys [email password]}]
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.signInWithEmailAndPassword email password)
       (.then set-user)
       (.catch (core/default-error-handler))))
 
 
 (defn email-create-user [{:keys [email password]}]
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.createUserWithEmailAndPassword email password)
       (.then set-user)
       (.catch (core/default-error-handler))))
 
 
 (defn anonymous-sign-in [opts]
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.signInAnonymously)
       (.then set-user)
       (.catch (core/default-error-handler))))
 
 
 (defn custom-token-sign-in [{:keys [token]}]
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.signInWithCustomToken token)
       (.then set-user)
       (.catch (core/default-error-handler))))
 
 
 (defn init-recaptcha [{:keys [on-solve container-id]}]
-  (let [recaptcha (js/firebase.auth.RecaptchaVerifier.
+  (let [recaptcha (firebase/auth.RecaptchaVerifier.
                    container-id
                    (clj->js {:size     "invisible"
                              :callback #(re-frame/dispatch on-solve)}))]
@@ -136,7 +135,7 @@
 
 (defn phone-number-sign-in [{:keys [phone-number on-send]}]
   (if-let [verifier (:recaptcha-verifier @core/firebase-state)]
-    (-> (js/firebase.auth)
+    (-> (firebase/auth)
         (.signInWithPhoneNumber phone-number verifier)
         (.then (fn [confirmation]
                  (when on-send
@@ -157,6 +156,6 @@
 
 
 (defn sign-out []
-  (-> (js/firebase.auth)
+  (-> (firebase/auth)
       (.signOut)
       (.catch (core/default-error-handler))))
